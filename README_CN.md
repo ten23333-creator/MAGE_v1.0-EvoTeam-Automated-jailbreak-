@@ -3,12 +3,22 @@
 <div align="center">
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![arXiv](https://img.shields.io/badge/arXiv-2511.12710-red)](https://arxiv.org/abs/2511.12710)
 
 **融合 AI 生成攻击工具、遗传进化与多智能体协同规划的黑盒大模型越狱框架**
 
 </div>
+
+---
+
+## 相关项目
+
+EvoTeam 基于以下开源研究构建和扩展：
+
+| 项目 | 论文 | 代码 |
+|------|------|------|
+| **EvoSynth** — 越狱攻击的进化合成 | [arXiv:2511.12710](https://arxiv.org/abs/2511.12710) | [GitHub](https://github.com/dongdongunique/EvoSynth) |
+| **X-Teaming** — 基于自适应多智能体的多轮越狱 | [arXiv:2504.13203](https://arxiv.org/abs/2504.13203) | [GitHub](https://github.com/salman-lui/x-teaming) |
+| **HarmBench** — 标准化红队评估数据集 | — | [GitHub](https://github.com/centerforaisafety/HarmBench) |
 
 ---
 
@@ -31,6 +41,22 @@ EvoTeam 是一个混合越狱框架，融合了两大范式：
 | **自适应安全画像** | 动态探针生成、5 维结构化安全画像、Bootstrap 置信区间 |
 | **嵌入多样性控制** | 余弦相似度惩罚防止工具种群收敛到单一策略 |
 | **离线计划预生成** | 按（安全画像 × 查询标签）组合定制攻击计划，跨查询缓存复用 |
+
+---
+
+## 硬件运行环境
+
+EvoTeam 在以下平台上开发与测试：
+
+| 配置项 | 规格 |
+|--------|------|
+| **算力芯片** | 4× 海光 PPU ZW810E（单卡 96 GB 显存） |
+| **宿主机** | 64 核 CPU，384 GB 内存 |
+| **操作系统** | Ubuntu 24.04 |
+| **PPU SDK** | 海光 PPU SDK 2.0.0（底层 API 兼容 CUDA 12.9） |
+| **AI 框架** | torch==2.9.0+ppu2.0.0.oe（硬件厂商定制版，**禁止被覆盖或降级**） |
+| **推理框架** | vLLM 0.15.0+ppu / SGLang 0.5.7 |
+| **网络环境** | 纯内网隔离（无公网访问）。代码需本地下载 zip 后上传解压，依赖包需预先下载并离线传入。 |
 
 ---
 
@@ -134,13 +160,34 @@ python main.py --config my_config.yaml --query "..."
 
 ## 配置说明
 
+### 推荐参数
+
+为获得最佳性能，建议使用以下参数值：
+
+| 参数 | 推荐值 | 说明 |
+|------|--------|------|
+| `max_iterations` | **15** | 每个查询的最大攻击迭代轮数 |
+| `multi_turn_max_rounds` | **6** | 每次攻击的最大对话轮数 |
+
+### 默认模型配置
+
+```yaml
+# 模型配置
+attack_model: "Qwen3-32B"
+target_model: "Meta-Llama-3-8B-Instruct"
+judge_model: "DeepSeek-R1-Distill-Qwen-32B"
+embedding_model: "Qwen3-Embedding-8B"
+```
+
+### 完整配置
+
 编辑 `config.yaml`：
 
 ```yaml
 # 模型配置
-attack_model: "Qwen2.5-32B-Instruct"
-target_model: "Qwen2.5-72B-Instruct"
-judge_model: "Qwen3-8B"
+attack_model: "Qwen3-32B"
+target_model: "Meta-Llama-3-8B-Instruct"
+judge_model: "DeepSeek-R1-Distill-Qwen-32B"
 embedding_model: "Qwen3-Embedding-8B"
 
 # API 配置
@@ -152,9 +199,9 @@ judge_api_base:  "http://localhost:8002/v1"
 embed_api_base: "http://localhost:8003/v1"
 
 # 攻击参数
-max_iterations: 20
+max_iterations: 15                  # 推荐值
 success_threshold: 5
-multi_turn_max_rounds: 10
+multi_turn_max_rounds: 6            # 推荐值
 
 # 遗传算法参数
 population_size: 10          # 工具种群大小
@@ -176,7 +223,7 @@ cache_persistence_path: "./cache/evoteam_cache.json"
 支持环境变量覆盖（前缀 `EVOTEAM_`）：
 ```bash
 export EVOTEAM_ATTACK_MODEL="gpt-4o"
-export EVOTEAM_MAX_ITERATIONS="30"
+export EVOTEAM_MAX_ITERATIONS="15"
 export EVOTEAM_API_KEY="sk-xxx"
 ```
 
@@ -279,15 +326,15 @@ LLM 反思分析攻击结果，生成结构化改进报告（7 个部分：整�
 - OpenAI 兼容 API 端点（vLLM、SGLang、Ollama、OpenRouter 等）
 - 完整依赖见 `requirements.txt`
 
-### 支持平台
+---
 
-| 平台 | 硬件 | 推理框架 |
-|------|------|---------|
-| 海光 PPU | 4× ZW810E (96GB) | vLLM 0.15.0+ppu / SGLang 0.5.7 |
-| NVIDIA GPU | 显存充足即可 | vLLM / SGLang |
-| 云端 API | — | OpenAI / OpenRouter / Together |
+## 性能表现
 
-使用本地推理服务器时支持完全离线运行。
+> **说明**：系统性的完整统计结果目前仍在完善中。以下为针对极高难度场景的初步测试数据：
+>
+> * **测试数据集**：从 HarmBench 基础的 200 个数据集中，深度筛选出 **10 个极具挑战性的高难度恶意问题**。
+> * **测试环境**：严格遵循**冷启动**条件（完全不依赖任何缓存）。
+> * **测试结果**：成功越狱目标模型，**平均对话轮数低于 20 次**。
 
 ---
 

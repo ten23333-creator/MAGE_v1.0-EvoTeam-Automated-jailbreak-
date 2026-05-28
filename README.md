@@ -3,12 +3,22 @@
 <div align="center">
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![arXiv](https://img.shields.io/badge/arXiv-2511.12710-red)](https://arxiv.org/abs/2511.12710)
 
 **A black-box LLM jailbreak framework combining AI-generated attack tools, genetic evolution, and collaborative multi-agent planning.**
 
 </div>
+
+---
+
+## Related Projects
+
+EvoTeam builds upon and extends the following open-source research:
+
+| Project | Paper | Code |
+|---------|-------|------|
+| **EvoSynth** — Evolutionary Synthesis of Jailbreak Attacks | [arXiv:2511.12710](https://arxiv.org/abs/2511.12710) | [GitHub](https://github.com/dongdongunique/EvoSynth) |
+| **X-Teaming** — Multi-Turn Jailbreaks with Adaptive Multi-Agents | [arXiv:2504.13203](https://arxiv.org/abs/2504.13203) | [GitHub](https://github.com/salman-lui/x-teaming) |
+| **HarmBench** — Standardized Red-Teaming Evaluation | — | [GitHub](https://github.com/centerforaisafety/HarmBench) |
 
 ---
 
@@ -31,6 +41,22 @@ The result is a framework where attack tools **evolve through genetic algorithms
 | **Adaptive Security Profiling** | Dynamic probe generation, structured SecurityProfile with 5 vulnerability dimensions, bootstrap confidence intervals |
 | **Embedding-based Diversity Control** | Cosine similarity penalties prevent tool population convergence |
 | **Offline Plan Pre-generation** | Attack plans tailored to (security profile × query tag) combinations, cached for cross-query reuse |
+
+---
+
+## Hardware Environment
+
+EvoTeam has been developed and tested on the following platform:
+
+| Component | Specification |
+|-----------|---------------|
+| **Compute Chips** | 4× Hygon PPU ZW810E (96 GB VRAM each) |
+| **Host** | 64-core CPU, 384 GB RAM |
+| **OS** | Ubuntu 24.04 |
+| **PPU SDK** | Hygon PPU SDK 2.0.0 (CUDA 12.9 API-compatible layer) |
+| **AI Framework** | torch==2.9.0+ppu2.0.0.oe (custom-built; must NOT be downgraded or replaced) |
+| **Inference** | vLLM 0.15.0+ppu / SGLang 0.5.7 |
+| **Network** | Fully air-gapped (no internet access). Code must be transferred via local zip upload. Packages must be pre-downloaded and transferred offline. |
 
 ---
 
@@ -133,13 +159,34 @@ python main.py --config my_config.yaml --query "..."
 
 ## Configuration
 
+### Recommended Settings
+
+For optimal performance, we recommend the following values:
+
+| Parameter | Recommended | Description |
+|-----------|-------------|-------------|
+| `max_iterations` | **15** | Maximum attack iterations per query |
+| `multi_turn_max_rounds` | **6** | Maximum conversation turns per attack |
+
+### Default Model Configuration
+
+```yaml
+# Model Configuration
+attack_model: "Qwen3-32B"
+target_model: "Meta-Llama-3-8B-Instruct"
+judge_model: "DeepSeek-R1-Distill-Qwen-32B"
+embedding_model: "Qwen3-Embedding-8B"
+```
+
+### Full Configuration
+
 Edit `config.yaml`:
 
 ```yaml
 # Model Configuration
-attack_model: "Qwen2.5-32B-Instruct"
-target_model: "Qwen2.5-72B-Instruct"
-judge_model: "Qwen3-8B"
+attack_model: "Qwen3-32B"
+target_model: "Meta-Llama-3-8B-Instruct"
+judge_model: "DeepSeek-R1-Distill-Qwen-32B"
 embedding_model: "Qwen3-Embedding-8B"
 
 # API Configuration
@@ -151,9 +198,9 @@ judge_api_base:  "http://localhost:8002/v1"
 embed_api_base: "http://localhost:8003/v1"
 
 # Attack Parameters
-max_iterations: 20
+max_iterations: 15                  # Recommended
 success_threshold: 5
-multi_turn_max_rounds: 10
+multi_turn_max_rounds: 6            # Recommended
 
 # Genetic Algorithm
 population_size: 10
@@ -175,7 +222,7 @@ cache_persistence_path: "./cache/evoteam_cache.json"
 Environment variable overrides (prefix `EVOTEAM_`):
 ```bash
 export EVOTEAM_ATTACK_MODEL="gpt-4o"
-export EVOTEAM_MAX_ITERATIONS="30"
+export EVOTEAM_MAX_ITERATIONS="15"
 export EVOTEAM_API_KEY="sk-xxx"
 ```
 
@@ -278,17 +325,15 @@ LLM reflection analyzes attack outcomes and produces structured improvement guid
 - OpenAI-compatible API endpoint (vLLM, SGLang, Ollama, OpenRouter, etc.)
 - See `requirements.txt` for full dependency list
 
-## Platform Support
+---
 
-EvoTeam has been tested on:
+## Performance Overview
 
-| Platform | Hardware | Inference |
-|----------|----------|-----------|
-| Hygon PPU | 4× ZW810E (96GB) | vLLM 0.15.0+ppu / SGLang 0.5.7 |
-| NVIDIA GPU | Any with sufficient VRAM | vLLM / SGLang |
-| Cloud API | — | OpenAI / OpenRouter / Together |
-
-Completely offline operation is supported when using local inference servers.
+> **Note**: Systematic large-scale evaluation is currently ongoing. The following are preliminary results from an extreme-difficulty test scenario:
+>
+> * **Dataset**: From the 200-instance HarmBench standard set, **10 highly challenging adversarial queries** were carefully selected for maximum difficulty.
+> * **Setup**: Strict **cold-start** conditions (no cached tools or plans from prior runs).
+> * **Result**: All 10 target queries were successfully jailbroken, with an **average of fewer than 20 conversation turns** per query.
 
 ---
 
